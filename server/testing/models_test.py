@@ -1,32 +1,38 @@
 from datetime import datetime
-
 from app import app
 from models import db, Message
+import pytest
 
-class TestMessage:
-    '''Message model in models.py'''
-
+@pytest.fixture
+def setup_teardown():
+    '''Setup and teardown for each test.'''
     with app.app_context():
-        m = Message.query.filter(
-            Message.body == "Hello 👋"
-            ).filter(Message.username == "Liza")
-
-        for message in m:
-            db.session.delete(message)
-
+        # Delete existing message with body "Hello 👋" and username "Liza"
+        Message.query.filter_by(body="Hello 👋", username="Liza").delete()
         db.session.commit()
 
-    def test_has_correct_columns(self):
+        yield
+
+        # Cleanup: Delete any messages created during tests
+        Message.query.filter_by(body="Hello 👋", username="Liza").delete()
+        db.session.commit()
+
+class TestMessage:
+    '''Tests for the Message model.'''
+
+    def test_has_correct_columns(self, setup_teardown):
         '''has columns for message body, username, and creation time.'''
         with app.app_context():
-
-            hello_from_liza = Message(
-                body="Hello 👋",
-                username="Liza")
-            
+            # Create a new message
+            hello_from_liza = Message(body="Hello 👋", username="Liza")
             db.session.add(hello_from_liza)
             db.session.commit()
 
-            assert(hello_from_liza.body == "Hello 👋")
-            assert(hello_from_liza.username == "Liza")
-            assert(type(hello_from_liza.created_at) == datetime)
+            # Assertions
+            assert hello_from_liza.body == "Hello 👋"
+            assert hello_from_liza.username == "Liza"
+            assert isinstance(hello_from_liza.created_at, datetime)
+
+            # Cleanup the created message
+            db.session.delete(hello_from_liza)
+            db.session.commit()
